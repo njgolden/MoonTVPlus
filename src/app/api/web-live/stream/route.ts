@@ -43,9 +43,38 @@ async function getBilibiliStream(roomId: string) {
   const roomData = roomInitData.data;
   const realRoomId = roomData.room_id;
   const liveStatus = roomData.live_status; // 0=未开播, 1=直播中, 2=轮播
+  const uid = roomData.uid;
 
   if (liveStatus !== 1) {
     throw new Error('直播未开启');
+  }
+
+  // 获取主播信息
+  let ownerName = '';
+  try {
+    const userRes = await fetch(`https://api.live.bilibili.com/live_user/v1/Master/info?uid=${uid}`, {
+      headers
+    });
+    const userData = await userRes.json();
+    if (userData.code === 0) {
+      ownerName = userData.data?.info?.uname || '';
+    }
+  } catch (err) {
+    console.warn('获取主播信息失败:', err);
+  }
+
+  // 获取房间详细信息（包含标题）
+  let title = '';
+  try {
+    const roomInfoRes = await fetch(`https://api.live.bilibili.com/room/v1/Room/get_info?room_id=${realRoomId}`, {
+      headers
+    });
+    const roomInfoData = await roomInfoRes.json();
+    if (roomInfoData.code === 0) {
+      title = roomInfoData.data?.title || '';
+    }
+  } catch (err) {
+    console.warn('获取房间标题失败:', err);
   }
 
   // 获取播放地址 (原画质量 qn=10000)
@@ -94,7 +123,11 @@ async function getBilibiliStream(roomId: string) {
     throw new Error('未找到m3u8地址');
   }
 
-  return m3u8Url;
+  return {
+    url: m3u8Url,
+    name: ownerName,
+    title: title
+  };
 }
 
 async function getDouyinStream(roomId: string) {
@@ -163,7 +196,12 @@ async function getDouyinStream(roomId: string) {
     throw new Error('未找到可用的m3u8地址');
   }
 
-  return m3u8Url;
+  // 返回流地址和主播信息
+  return {
+    url: m3u8Url,
+    name: jsonData.data.user?.nickname || '',
+    title: roomData.title || ''
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -211,22 +249,26 @@ export async function GET(request: NextRequest) {
     }
 
     if (platform === 'bilibili') {
-      const streamUrl = await getBilibiliStream(roomId);
-      const proxyUrl = `/api/web-live/proxy/proxy.m3u8?url=${encodeURIComponent(streamUrl)}`;
+      const streamData = await getBilibiliStream(roomId);
+      const proxyUrl = `/api/web-live/proxy/proxy.m3u8?url=${encodeURIComponent(streamData.url)}`;
 
       return NextResponse.json({
         url: proxyUrl,
-        originalUrl: streamUrl
+        originalUrl: streamData.url,
+        name: streamData.name,
+        title: streamData.title
       });
     }
 
     if (platform === 'douyin') {
-      const streamUrl = await getDouyinStream(roomId);
-      const proxyUrl = `/api/web-live/proxy/proxy.m3u8?url=${encodeURIComponent(streamUrl)}`;
+      const streamData = await getDouyinStream(roomId);
+      const proxyUrl = `/api/web-live/proxy/proxy.m3u8?url=${encodeURIComponent(streamData.url)}`;
 
       return NextResponse.json({
         url: proxyUrl,
-        originalUrl: streamUrl
+        originalUrl: streamData.url,
+        name: streamData.name,
+        title: streamData.title
       });
     }
 

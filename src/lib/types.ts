@@ -52,6 +52,14 @@ export interface IStorage {
   // 迁移收藏
   migrateFavorites(userName: string): Promise<void>;
 
+  // 音乐播放记录相关
+  getMusicPlayRecord(userName: string, key: string): Promise<any | null>;
+  setMusicPlayRecord(userName: string, key: string, record: any): Promise<void>;
+  batchSetMusicPlayRecords(userName: string, records: { key: string; record: any }[]): Promise<void>;
+  getAllMusicPlayRecords(userName: string): Promise<{ [key: string]: any }>;
+  deleteMusicPlayRecord(userName: string, key: string): Promise<void>;
+  clearAllMusicPlayRecords(userName: string): Promise<void>;
+
   // 用户相关
   verifyUser(userName: string, password: string): Promise<boolean>;
   // 检查用户是否存在（无需密码）
@@ -117,6 +125,9 @@ export interface IStorage {
   // 收藏更新检查相关
   getLastFavoriteCheckTime(userName: string): Promise<number>;
   setLastFavoriteCheckTime(userName: string, timestamp: number): Promise<void>;
+
+  // 求片冷却时间
+  updateLastMovieRequestTime?(userName: string, timestamp: number): Promise<void>;
 
   // 求片相关
   getAllMovieRequests(): Promise<MovieRequest[]>;

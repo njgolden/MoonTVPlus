@@ -35,7 +35,7 @@ const nextConfig = {
     ],
   },
 
-  webpack(config) {
+  webpack(config, { isServer }) {
     // Grab the existing rule that handles SVG imports
     const fileLoaderRule = config.module.rules.find((rule) =>
       rule.test?.test?.('.svg')
@@ -70,6 +70,25 @@ const nextConfig = {
       tls: false,
       crypto: false,
     };
+
+    // Exclude better-sqlite3, D1, and Postgres modules from client-side bundle
+    if (!isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        'better-sqlite3': 'commonjs better-sqlite3',
+        '@vercel/postgres': 'commonjs @vercel/postgres',
+        'pg': 'commonjs pg',
+      });
+
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'better-sqlite3': false,
+        '@/lib/d1.db': false,
+        '@/lib/d1-adapter': false,
+        '@/lib/postgres.db': false,
+        '@/lib/postgres-adapter': false,
+      };
+    }
 
     return config;
   },

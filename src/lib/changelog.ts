@@ -11,6 +11,58 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
 	{
+    version: '212.1.0',
+    date: '2026-02-08',
+	added: [
+		"新增 Vercel Postgres 数据库支持"
+    ],
+    changed: [
+		"自动创建站长账号，避免外键约束导致无法操作关联表",
+		"即将上映恢复长按菜单，上映天数改为点击显示"
+    ],
+    fixed: [
+	]
+	},
+	{
+    version: '212.0.0',
+    date: '2026-02-07',
+	added: [
+		"接入Tunehub实现音乐播放",
+		"网络直播支持观影室同步",
+		"详情图片点击可预览",
+		"oidc登录图标自动识别多平台"
+    ],
+    changed: [
+		"获取用户站长无信息时返回默认值兜底",
+		"继续观看使用渐进式加载模式",
+		"openlist根路径主动移除bom防止获取根目录失效",
+		"webgpu缓冲区大小调整",
+		"设备管理可识别OrionTv"
+    ],
+    fixed: [
+		"修复与upstash合并数据源时丢失的用户缓存信息",
+		"修复登录页面不处理error参数",
+		"修复safari视频切换集数无法清理旧视频",
+		"修复部分tmdb接口在cloudflare下无法使用"
+	]
+	},{
+    version: '211.0.0',
+    date: '2026-02-01',
+	added: [
+		"cloudflare部署增加d1支持",
+		"电视直播支持flv播放",
+		"登录注册页面输入框增加图标"
+    ],
+    changed: [
+		"豆瓣预告片改为前端获取",
+		"豆瓣预告片可播放声音",
+		"轮播图缓存采用乐观更新策略",
+		"管理面板无权限时显示错误提示"
+    ],
+    fixed: [
+	]
+	},
+	{
     version: '210.2.0',
     date: '2026-01-29',
 	added: [

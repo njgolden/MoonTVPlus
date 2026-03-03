@@ -140,7 +140,7 @@ async function handleSearch(client: EmbyClient, query: string) {
   const list = result.Items.map((item) => ({
     vod_id: item.Id,
     vod_name: item.Name,
-    vod_pic: client.getImageUrl(item.Id, 'Primary'),
+    vod_pic: client.getImageUrl(item.Id, 'Primary', undefined, requestToken),
     vod_remarks: item.Type === 'Movie' ? '电影' : '剧集',
     vod_year: item.ProductionYear?.toString() || '',
     vod_content: item.Overview || '',
@@ -247,7 +247,7 @@ async function handleDetail(
       {
         vod_id: item.Id,
         vod_name: item.Name,
-        vod_pic: client.getImageUrl(item.Id, 'Primary'),
+        vod_pic: client.getImageUrl(item.Id, 'Primary', undefined, requestToken),
         vod_remarks: item.Type === 'Movie' ? '电影' : '剧集',
         vod_year: item.ProductionYear?.toString() || '',
         vod_content: item.Overview || '',

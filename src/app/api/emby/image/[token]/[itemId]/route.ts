@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { getConfig } from '@/lib/config';
+import { hasFeaturePermission } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -41,7 +42,10 @@ export async function GET(
 
     // 验证 TVBox Token（全局token或用户token）
     let hasValidToken = false;
-    if (globalToken && requestToken === globalToken) {
+    if (requestToken === 'proxy') {
+      // 使用固定的 'proxy' token，跳过token验证，依赖用户登录验证
+      hasValidToken = false;
+    } else if (globalToken && requestToken === globalToken) {
       // 全局token
       hasValidToken = true;
     } else {
@@ -51,14 +55,18 @@ export async function GET(
       if (username) {
         // 检查用户是否被封禁
         const userInfo = await db.getUserInfoV2(username);
-        if (userInfo && !userInfo.banned) {
+        const allowed = await hasFeaturePermission(username, 'emby');
+        if (userInfo && !userInfo.banned && allowed) {
           hasValidToken = true;
         }
       }
     }
 
     // 验证用户登录
-    const hasValidAuth = authInfo && authInfo.username;
+    const hasValidAuth = !!(
+      authInfo?.username &&
+      (await hasFeaturePermission(authInfo.username, 'emby'))
+    );
 
     // 两者至少满足其一
     if (!hasValidToken && !hasValidAuth) {
@@ -73,18 +81,27 @@ export async function GET(
     // 获取 Emby 客户端
     const client = await getEmbyClient(embyKey);
 
-    // 获取图片 URL
-    const imageUrl = client.getImageUrl(itemId, imageType, maxWidth);
+    // 获取图片 URL（强制获取直接URL，避免代理循环）
+    const imageUrl = client.getImageUrl(itemId, imageType, maxWidth, undefined, true);
 
     // 构建请求头，添加自定义 User-Agent
     const requestHeaders: HeadersInit = {
       'User-Agent': client.getUserAgent(),
     };
 
-    // 请求图片
-    const imageResponse = await fetch(imageUrl, {
-      headers: requestHeaders,
-    });
+    // 创建 AbortController 用于超时控制
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), 20000); // 20秒超时
+
+    try {
+      // 请求图片
+      const imageResponse = await fetch(imageUrl, {
+        headers: requestHeaders,
+        signal: abortController.signal,
+      });
+
+      // 清除超时定时器
+      clearTimeout(timeoutId);
 
     if (!imageResponse.ok) {
       console.error('[Emby Image] 获取图片失败:', {
@@ -120,6 +137,19 @@ export async function GET(
       status: imageResponse.status,
       headers,
     });
+    } catch (error) {
+      // 清除超时定时器
+      clearTimeout(timeoutId);
+
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('[Emby Image] 请求超时');
+        return NextResponse.json(
+          { error: '请求超时' },
+          { status: 504 }
+        );
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('[Emby Image] 错误:', error);
     return NextResponse.json(
